@@ -1,0 +1,30 @@
+name: build
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: unzip -o hudmod-project.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.0
+      - name: Latest Fabric versions for 1.21.11
+        run: |
+          FAPI=$(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -o '<version>[^<]*+1\.21\.11</version>' | sed 's/<[^>]*>//g' | tail -1)
+          LOADER=$(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml | grep -o '<release>[^<]*' | sed 's/<release>//')
+          echo "fabric-api=$FAPI loader=$LOADER"
+          sed -i "s/^fabric_version=.*/fabric_version=$FAPI/" gradle.properties
+          sed -i "s/^loader_version=.*/loader_version=$LOADER/" gradle.properties
+      - run: gradle build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hudmod-jar
+          path: build/libs/hudmod-1.0.0.jar
